@@ -43,8 +43,32 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Program.cs" />
+    <Compile Include="FluentPath\Overwrite.cs" />
+    <Compile Include="FluentPath\Path.cs" />
+    <Compile Include="FluentPath\PathBase.cs" />
+    <Compile Include="FluentPath\PathConverter.cs" />
+    <Compile Include="fxb2gra\Program.cs" />
+    <Compile Include="LitJson\IJsonWrapper.cs" />
+    <Compile Include="LitJson\JsonData.cs" />
+    <Compile Include="LitJson\JsonException.cs" />
+    <Compile Include="LitJson\JsonMapper.cs" />
+    <Compile Include="LitJson\JsonMockWrapper.cs" />
+    <Compile Include="LitJson\JsonReader.cs" />
+    <Compile Include="LitJson\JsonWriter.cs" />
+    <Compile Include="LitJson\Lexer.cs" />
+    <Compile Include="LitJson\ParserToken.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="embed-data\gra-footer1.dat" />
+    <EmbeddedResource Include="embed-data\gra-footer2.dat" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="FluentPath\license.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="embed-data\gra-header1.dat" />
+    <EmbeddedResource Include="embed-data\gra-header2.dat" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
