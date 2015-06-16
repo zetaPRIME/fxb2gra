@@ -13,26 +13,53 @@ namespace fxb2gra
 {
 	public class Program
 	{
-		static Path dataPath;
+		static Path appPath;
 
 		static JsonData pluginDb;
 
 		static void Main(string[] args)
 		{
-			dataPath = new Path(Assembly.GetExecutingAssembly().Location).Up().Combine("data");
-			if (!dataPath.IsDirectory) dataPath.CreateDirectory();
-			//if (!dataPath.Add("plugins.json").Exists) dataPath.CreateFile("plugins.json", "");
-			dataPath.Combine("plugins.json").Open((FileStream fs) =>
+			appPath = new Path(Assembly.GetExecutingAssembly().Location).Up();
+
+			// load internal plugin db
+			using (Stream js = Assembly.GetExecutingAssembly().GetManifestResourceStream("fxb2gra.embed_data.plugins.json"))
 			{
-				byte[] file = new byte[fs.Length];
-				fs.Read(file, 0, (byte)fs.Length);
+				byte[] file = new byte[js.Length];
+				js.Read(file, 0, file.Length);
 				pluginDb = JsonMapper.ToObject(Encoding.UTF8.GetString(file));
-			}, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+			}
+
+			// handle external db
+			if (appPath.Add("plugins.json").Exists)
+			{
+				appPath.Combine("plugins.json").Open((FileStream fs) =>
+				{
+					byte[] file = new byte[fs.Length];
+					fs.Read(file, 0, file.Length);
+					JsonData pluginDb2 = JsonMapper.ToObject(Encoding.UTF8.GetString(file));
+
+					foreach (KeyValuePair<string, JsonData> kvp in pluginDb2)
+					{
+						pluginDb[kvp.Key] = kvp.Value;
+					}
+				}, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+
+				pluginDb.Remove(".");
+
+				// re-output
+				appPath.Combine("plugins.json").Open((FileStream fs) =>
+				{
+					byte[] ofile = Encoding.UTF8.GetBytes(JsonMapper.ToPrettyJson(pluginDb));
+					fs.Write(ofile, 0, ofile.Length);
+				}, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+			}
 
 			if (args.Length == 1)
 			{
 				Path inFile = new Path(args[0]);
-				if (inFile.Extension.ToLower() == ".gra") Process_gra2fxb(inFile);
+				string ext = inFile.Extension.ToLower();
+				if (ext == ".gra") Process_gra2fxb(inFile);
+				else if (ext == ".fxp" || ext == ".fxb") Process_fxb2gra(inFile);
 			}
 			//else Process_gra2fxb(new Path("D:\\OpenMPT\\inst\\! Minihost Graphs\\test-synth1-twinklesquare2b-.gra"));
 			else Process_fxb2gra(new Path("D:\\OpenMPT\\inst\\My-Synth1\\holy subbass.fxp"));
@@ -41,6 +68,19 @@ namespace fxb2gra
 			// temp: wait for input
 			Console.WriteLine("Press any key...");
 			Console.ReadKey(true);
+		}
+
+		static string FindPluginFilename(string id)
+		{
+			if (!pluginDb.Has(id)) return "";
+			if (!pluginDb[id].IsString) return "";
+			return (string)pluginDb[id] + ".dll";
+		}
+		static string FindPluginName(string id)
+		{
+			if (!pluginDb.Has(id)) return "";
+			if (!pluginDb[id].IsString) return "";
+			return (string)pluginDb[id];
 		}
 
 		static void Process_matchchecksum(Path inFile)
@@ -146,6 +186,14 @@ namespace fxb2gra
 			fxfile[14] = 0;
 			fxfile[15] = 1;
 
+			string vstId = "";
+			vstId += (char)fxfile[16];
+			vstId += (char)fxfile[17];
+			vstId += (char)fxfile[18];
+			vstId += (char)fxfile[19];
+			string vstName = FindPluginName(vstId);
+			string vstFilename = FindPluginFilename(vstId);
+
 			Assembly asm = Assembly.GetExecutingAssembly();
 
 			string name = inFile.FileNameWithoutExtension;
@@ -160,14 +208,13 @@ namespace fxb2gra
 				byte[] buffer;
 
 				// header part 1
-				string[] blah = asm.GetManifestResourceNames();
 				ds = asm.GetManifestResourceStream("fxb2gra.embed_data.gra-header1.dat");
 				buffer = new byte[(int)ds.Length];
 				ds.Read(buffer, 0, buffer.Length);
 				bw.Write(buffer);
 
 				// graph name
-				bw.Write(name.ToCharArray());
+				bw.Write((name + " (" + vstName + ")").ToCharArray());
 				bw.Write((byte)0);
 
 				// header part 2
@@ -178,7 +225,7 @@ namespace fxb2gra
 
 				// tag
 				//bw.Write("\<?xml version=\"1.0\" encoding=\"UTF-8\"?>".ToCharArray());
-				bw.Write("<PLUGIN file=\"Synth1 VST.dll\"/>".ToCharArray());
+				bw.Write(("<PLUGIN file=\"" + vstFilename + "\"/>").ToCharArray());
 				bw.Write((byte)0);
 
 				bw.Write((byte)7);
@@ -195,7 +242,7 @@ namespace fxb2gra
 				bw.Write(buffer);
 
 				// node name
-				bw.Write(name.ToCharArray());
+				bw.Write((name + " (" + vstName + ")").ToCharArray());
 				bw.Write((byte)0);
 
 				// footer part 2
