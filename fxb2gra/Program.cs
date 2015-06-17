@@ -139,10 +139,10 @@ namespace fxb2gra
 			else if (ext == ".fxp" || ext == ".fxb") Process_fxb2gra(inFile);
 		}
 
-		static void ProcessDirectory(Path inFile)
+		static void ProcessDirectory(Path inFile, bool prevRecursive = false)
 		{
 			curMode = false;
-			curRecursive = false;
+			curRecursive = prevRecursive;
 
 			if (inFile.Combine("fxb2gra.json").Exists)
 			{
@@ -166,8 +166,10 @@ namespace fxb2gra
 			if (flagMode != null) curMode = flagMode.Value;
 			curRecursive = curRecursive || flagRecursive;
 
-			Path files = inFile.Files(curMode ? "*.gra" : "*.fxp|*.fxb", curRecursive);
+			Path files = inFile.Files(curMode ? "*.gra" : "*.fxp|*.fxb", false);
 			foreach (Path p in files) ProcessFile(p);
+
+			if (curRecursive) foreach (Path p in inFile.Directories()) ProcessDirectory(p, true);
 		}
 
 		static void Process_matchchecksum(Path inFile)
