@@ -17,6 +17,13 @@ namespace fxb2gra
 
 		static JsonData pluginDb;
 
+		static bool? flagMode = null;
+		static bool flagRecursive = false;
+		static bool flagAuto = false;
+
+		static bool curMode = false;
+		static bool curRecursive = false;
+
 		static void Main(string[] args)
 		{
 			appPath = new Path(Assembly.GetExecutingAssembly().Location).Up();
@@ -54,20 +61,46 @@ namespace fxb2gra
 				}, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
 			}
 
-			if (args.Length == 1)
+			List<string> arg = new List<string>(args);
+			List<string> files = new List<string>();
+			foreach (string a in arg)
 			{
-				Path inFile = new Path(args[0]);
-				string ext = inFile.Extension.ToLower();
-				if (ext == ".gra") Process_gra2fxb(inFile);
-				else if (ext == ".fxp" || ext == ".fxb") Process_fxb2gra(inFile);
+				if (a.StartsWith("-"))
+				{
+					char[] ch = a.Substring(1).ToCharArray();
+					foreach (char c in ch)
+					{
+						switch (c)
+						{
+							case 'r':
+								flagRecursive = true;
+								break;
+							case 'f':
+								flagMode = true;
+								break;
+							case 'b':
+								flagMode = false;
+								break;
+							case 'a':
+								flagAuto = true;
+								break;
+							default:
+								break;
+						}
+					}
+				}
+				else files.Add(a);
 			}
-			//else Process_gra2fxb(new Path("D:\\OpenMPT\\inst\\! Minihost Graphs\\test-synth1-twinklesquare2b-.gra"));
-			else Process_fxb2gra(new Path("D:\\OpenMPT\\inst\\My-Synth1\\holy subbass.fxp"));
-			//else Process_matchchecksum(new Path("D:\\OpenMPT\\inst\\My-Synth1\\RoughBassCmp2.gra"));
+
+			if (files.Count == 0) ShowHelp();
+			foreach (string f in files) ProcessFile(new Path(f));
 
 			// temp: wait for input
-			Console.WriteLine("Press any key...");
-			Console.ReadKey(true);
+			if (!flagAuto)
+			{
+				Console.WriteLine("Press any key...");
+				Console.ReadKey(true);
+			}
 		}
 
 		static string FindPluginFilename(string id)
@@ -81,6 +114,60 @@ namespace fxb2gra
 			if (!pluginDb.Has(id)) return "";
 			if (!pluginDb[id].IsString) return "";
 			return (string)pluginDb[id];
+		}
+
+		static void ShowHelp()
+		{
+			using (Stream js = Assembly.GetExecutingAssembly().GetManifestResourceStream("fxb2gra.embed_data.help.txt"))
+			{
+				int chrn = 0;
+				BinaryReader br = new BinaryReader(js, Encoding.ASCII);
+				while (br.ReadChar() != '>') chrn++;
+				byte[] file = new byte[js.Length - chrn];
+				js.Read(file, 0, file.Length);
+				Console.WriteLine(Encoding.UTF8.GetString(file));
+			}
+		}
+
+		static void ProcessFile(Path inFile)
+		{
+			if (inFile.IsDirectory) { ProcessDirectory(inFile); return; }
+			if (inFile.FileName.ToLower() == "fxb2gra.json") { ProcessDirectory(inFile.Up()); return; }
+
+			string ext = inFile.Extension.ToLower();
+			if (ext == ".gra") Process_gra2fxb(inFile);
+			else if (ext == ".fxp" || ext == ".fxb") Process_fxb2gra(inFile);
+		}
+
+		static void ProcessDirectory(Path inFile)
+		{
+			curMode = false;
+			curRecursive = false;
+
+			if (inFile.Combine("fxb2gra.json").Exists)
+			{
+				inFile.Combine("fxb2gra.json").Open((FileStream fs) =>
+				{
+					byte[] file = new byte[fs.Length];
+					fs.Read(file, 0, file.Length);
+					JsonData pref = JsonMapper.ToObject(Encoding.UTF8.GetString(file));
+
+					if (pref.Has("mode") && pref["mode"].IsString)
+					{
+						if ((string)pref["mode"] == "f") curMode = true;
+						else if ((string)pref["mode"] == "g") curMode = false;
+					}
+
+					if (pref.Has("recursive") && pref["recursive"].IsBoolean) curRecursive = (bool)pref["recursive"];
+
+				}, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+			}
+
+			if (flagMode != null) curMode = flagMode.Value;
+			curRecursive = curRecursive || flagRecursive;
+
+			Path files = inFile.Files(curMode ? "*.gra" : "*.fxp|*.fxb", curRecursive);
+			foreach (Path p in files) ProcessFile(p);
 		}
 
 		static void Process_matchchecksum(Path inFile)

@@ -64,6 +64,7 @@
     <EmbeddedResource Include="embed-data\gra-footer2.dat" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="embed-data\help.txt" />
     <Content Include="FluentPath\license.txt" />
   </ItemGroup>
   <ItemGroup>
