@@ -5,8 +5,11 @@ Converts VST preset bank files to .gra usable in Image-Line Minihost Modular (an
 fxb2gra [-rfga] infile1 infile2 infile3...
 
 -r: recursive (directories only)
+
 -f: extract fxp/fxb (directories only)
+
 -g: wrap in .gra (directories only)
+
 -a: don't wait for input on completion
 
 # fxb2gra.json
