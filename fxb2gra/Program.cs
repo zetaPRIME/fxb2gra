@@ -26,6 +26,9 @@ namespace fxb2gra
 
 		static void Main(string[] args)
 		{
+			// DEBUG
+			//args = new string[]{"D:\\OpenMPT\\inst\\My-Synth1"};
+
 			appPath = new Path(Assembly.GetExecutingAssembly().Location).Up();
 
 			// load internal plugin db
@@ -166,7 +169,8 @@ namespace fxb2gra
 			if (flagMode != null) curMode = flagMode.Value;
 			curRecursive = curRecursive || flagRecursive;
 
-			Path files = inFile.Files(curMode ? "*.gra" : "*.fxp|*.fxb", false);
+			Path files = curMode ? inFile.Files("*.gra", false) : inFile.Files("*.fxp", false).Add(inFile.Files("*.fxb", false));
+			//inFile.Files(curMode ? "*.gra" : "*.fxp|*.fxb", false);
 			foreach (Path p in files) ProcessFile(p);
 
 			if (curRecursive) foreach (Path p in inFile.Directories()) ProcessDirectory(p, true);
